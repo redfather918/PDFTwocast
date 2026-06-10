@@ -5,192 +5,107 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PDFTwocast · PDF 转双人播客</title>
 <style>
-  /* ── Reset & Base ── */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   
   :root {
-    --bg: #f6f4f0;
-    --card: #ffffff;
-    --primary: #6c5ce7;
-    --primary-light: #a29bfe;
-    --accent: #fd79a8;
-    --text: #2d3436;
+    --bg:         #f6f4f0;
+    --card:       #ffffff;
+    --primary:    #6c5ce7;
+    --primary-l:  #a29bfe;
+    --accent:     #fd79a8;
+    --text:       #2d3436;
     --text-muted: #636e72;
-    --border: #dfe6e9;
-    --alex-bg: #e8f4fd;
-    --alex-color: #2980b9;
-    --mimi-bg: #fdf0f5;
-    --mimi-color: #c0392b;
-    --success: #00b894;
-    --radius: 16px;
-    --shadow: 0 4px 24px rgba(108,92,231,0.10);
+    --border:     #dfe6e9;
+    --alex-bg:    #e8f4fd; --alex-color: #2980b9;
+    --mimi-bg:    #fdf0f5; --mimi-color: #c0392b;
+    --success:    #00b894;
+    --warn:       #fdcb6e;
+    --radius:     16px;
+    --shadow:     0 4px 24px rgba(108,92,231,0.10);
   }
-
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
+    background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column;
   }
 
   /* ── Header ── */
   header {
     background: linear-gradient(135deg, #6c5ce7, #a29bfe);
-    color: white;
-    padding: 20px 32px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    box-shadow: 0 2px 16px rgba(108,92,231,0.3);
+    color: white; padding: 14px 32px; display: flex; align-items: center; gap: 16px;
+    box-shadow: 0 2px 16px rgba(108,92,231,0.3); flex-wrap: wrap;
   }
-  .logo {
-    width: 48px; height: 48px;
-    background: rgba(255,255,255,0.2);
-    border-radius: 12px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 24px;
+  .logo { width: 44px; height: 44px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+  header h1 { font-size: 20px; font-weight: 700; }
+  header p { font-size: 12px; opacity: 0.85; margin-top: 2px; }
+  .user-bar { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .user-btn {
+    padding: 7px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: all 0.15s;
   }
-  header h1 { font-size: 22px; font-weight: 700; }
-  header p { font-size: 13px; opacity: 0.85; margin-top: 2px; }
+  .btn-login { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.5); color: white; }
+  .btn-login:hover { background: rgba(255,255,255,0.35); }
+  .btn-logout { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); color: white; font-size: 11px; padding: 5px 10px; }
+  .btn-logout:hover { background: rgba(255,0,0,0.2); }
+  .member-badge {
+    display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: 700;
+  }
+  .badge-regular { background: rgba(255,255,255,0.2); color: white; }
+  .badge-paid { background: #00b894; color: white; }
+  .badge-admin { background: #fdcb6e; color: #2d3436; }
 
-  /* ── Main Layout ── */
-  main {
-    flex: 1;
-    max-width: 900px;
-    margin: 32px auto;
-    padding: 0 24px;
-    width: 100%;
-  }
+  /* ── Main ── */
+  main { flex: 1; max-width: 900px; margin: 28px auto; padding: 0 24px; width: 100%; }
 
   /* ── Card ── */
-  .card {
-    background: var(--card);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
-    padding: 28px;
-    margin-bottom: 24px;
+  .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 28px; margin-bottom: 24px; }
+  .card-title { font-size: 15px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+  /* ── Membership Hint ── */
+  .member-hint {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 16px; border-radius: 10px; margin-bottom: 16px;
+    font-size: 13px;
   }
-  .card-title {
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 16px;
-    display: flex; align-items: center; gap: 8px;
-  }
+  .hint-locked  { background: #fff3cd; border: 1px solid #ffc107; color: #856404; }
+  .hint-unlocked{ background: #d4edda; border: 1px solid #28a745; color: #155724; }
+  .hint-info    { background: #e2e3f1; border: 1px solid var(--primary-l); color: var(--primary); }
 
   /* ── Upload Zone ── */
   .upload-zone {
-    border: 2px dashed var(--primary-light);
-    border-radius: 12px;
-    padding: 40px 24px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s;
-    background: linear-gradient(135deg, #f8f7ff, #fdf0f5);
-    position: relative;
+    border: 2px dashed var(--primary-l); border-radius: 12px; padding: 40px 24px;
+    text-align: center; cursor: pointer; transition: all 0.2s;
+    background: linear-gradient(135deg, #f8f7ff, #fdf0f5); position: relative;
   }
   .upload-zone:hover, .upload-zone.drag-over {
-    border-color: var(--primary);
-    background: #f3f1ff;
-    transform: translateY(-2px);
+    border-color: var(--primary); background: #f3f1ff; transform: translateY(-2px);
   }
-  .upload-zone input[type="file"] {
-    position: absolute; inset: 0; opacity: 0; cursor: pointer;
-  }
+  .upload-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
   .upload-icon { font-size: 48px; margin-bottom: 12px; }
   .upload-title { font-size: 17px; font-weight: 600; color: var(--primary); }
   .upload-hint { font-size: 13px; color: var(--text-muted); margin-top: 6px; }
-  .file-selected {
-    display: none;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    background: #f0f7ff;
-    border-radius: 10px;
-    margin-top: 12px;
-    border: 1px solid #b3d4f5;
-  }
+  .file-selected { display: none; align-items: center; gap: 12px; padding: 12px 16px; background: #f0f7ff; border-radius: 10px; margin-top: 12px; border: 1px solid #b3d4f5; }
   .file-selected.show { display: flex; }
   .file-icon { font-size: 24px; }
   .file-name { font-size: 14px; font-weight: 500; color: var(--primary); flex: 1; word-break: break-all; }
   .file-size { font-size: 12px; color: var(--text-muted); }
-  .remove-btn {
-    background: none; border: none; cursor: pointer;
-    color: var(--text-muted); font-size: 18px; padding: 2px;
-  }
+  .remove-btn { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 18px; padding: 2px; }
   .remove-btn:hover { color: #e74c3c; }
 
   /* ── Config Row ── */
-  .config-row {
-    display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
-    margin-top: 20px;
-  }
-  .config-label {
-    font-size: 13px; color: var(--text-muted); font-weight: 500;
-  }
-  .lang-toggle {
-    display: flex; border-radius: 8px; overflow: hidden;
-    border: 1px solid var(--border);
-  }
+  .config-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 20px; }
+  .config-label { font-size: 13px; color: var(--text-muted); font-weight: 500; }
+  .lang-toggle { display: flex; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
   .lang-toggle input { display: none; }
-  .lang-toggle label {
-    padding: 7px 16px; font-size: 13px; font-weight: 500;
-    cursor: pointer; color: var(--text-muted);
-    background: white; transition: all 0.15s;
-  }
-  .lang-toggle input:checked + label {
-    background: var(--primary); color: white;
-  }
-  
-  .api-config-toggle {
-    margin-left: auto;
-    background: none; border: 1px solid var(--border);
-    border-radius: 8px; padding: 7px 14px;
-    font-size: 12px; cursor: pointer; color: var(--text-muted);
-    transition: all 0.15s;
-  }
-  .api-config-toggle:hover { border-color: var(--primary); color: var(--primary); }
-
-  /* ── API Config Panel ── */
-  .api-panel {
-    display: none;
-    background: #f8f7ff;
-    border-radius: 10px;
-    padding: 18px;
-    margin-top: 16px;
-    border: 1px solid #e0d9ff;
-  }
-  .api-panel.show { display: block; }
-  .api-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .api-field label { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; display: block; }
-  .api-field input {
-    width: 100%; padding: 8px 12px;
-    border: 1px solid var(--border); border-radius: 8px;
-    font-size: 13px; font-family: monospace;
-    background: white;
-  }
-  .api-field input:focus { outline: none; border-color: var(--primary); }
-  .api-save {
-    margin-top: 12px; padding: 8px 20px;
-    background: var(--primary); color: white; border: none;
-    border-radius: 8px; font-size: 13px; cursor: pointer;
-    transition: opacity 0.15s;
-  }
-  .api-save:hover { opacity: 0.85; }
-  .api-note { font-size: 11px; color: var(--text-muted); margin-top: 8px; }
+  .lang-toggle label { padding: 7px 16px; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--text-muted); background: white; transition: all 0.15s; }
+  .lang-toggle input:checked + label { background: var(--primary); color: white; }
+  .btn-admin { margin-left: auto; padding: 7px 14px; border: 1px solid var(--warn); background: #fff8e1; color: #856404; border-radius: 8px; font-size: 12px; cursor: pointer; display: none; }
+  .btn-admin.show { display: inline-block; }
 
   /* ── Generate Button ── */
   .generate-btn {
-    width: 100%; padding: 16px;
-    background: linear-gradient(135deg, var(--primary), var(--accent));
-    color: white; border: none; border-radius: 12px;
-    font-size: 16px; font-weight: 700; cursor: pointer;
-    transition: all 0.2s;
-    display: flex; align-items: center; justify-content: center; gap: 10px;
+    width: 100%; padding: 16px; background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer;
+    transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 10px;
     margin-top: 20px; letter-spacing: 0.03em;
   }
   .generate-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(108,92,231,0.3); }
@@ -200,95 +115,80 @@
   .progress-section { display: none; }
   .progress-section.show { display: block; }
   .progress-steps { display: flex; flex-direction: column; gap: 12px; }
-  .step {
-    display: flex; align-items: center; gap: 14px;
-    padding: 14px 18px; border-radius: 10px;
-    border: 1px solid var(--border); background: white;
-    transition: all 0.3s;
-  }
-  .step.active { border-color: var(--primary-light); background: #f8f7ff; }
+  .step { display: flex; align-items: center; gap: 14px; padding: 14px 18px; border-radius: 10px; border: 1px solid var(--border); background: white; transition: all 0.3s; }
+  .step.active { border-color: var(--primary-l); background: #f8f7ff; }
   .step.done { border-color: #b2f0e8; background: #f0fdf9; }
   .step.error { border-color: #ffd0d0; background: #fff5f5; }
   .step-icon { font-size: 22px; width: 32px; text-align: center; flex-shrink: 0; }
   .step-content { flex: 1; }
   .step-title { font-size: 14px; font-weight: 600; }
   .step-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
-  .step-status {
-    font-size: 20px;
-    transition: all 0.3s;
-  }
+  .step-status { font-size: 20px; transition: all 0.3s; }
   .spinner { animation: spin 0.8s linear infinite; display: inline-block; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* ── Script Display ── */
+  /* ── Script ── */
   .script-section { display: none; }
   .script-section.show { display: block; }
   .dialogue-list { display: flex; flex-direction: column; gap: 10px; }
-  .dialogue-line {
-    display: flex; gap: 10px; align-items: flex-start;
-  }
+  .dialogue-line { display: flex; gap: 10px; align-items: flex-start; }
   .dialogue-line.speaker-b { flex-direction: row-reverse; }
-  .avatar {
-    width: 36px; height: 36px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 16px; font-weight: 700; flex-shrink: 0;
-  }
+  .avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; flex-shrink: 0; }
   .speaker-a .avatar { background: var(--alex-bg); color: var(--alex-color); }
   .speaker-b .avatar { background: var(--mimi-bg); color: var(--mimi-color); }
-  .bubble {
-    max-width: 75%; padding: 10px 14px;
-    border-radius: 14px; font-size: 14px; line-height: 1.6;
-  }
-  .speaker-a .bubble {
-    background: var(--alex-bg); color: var(--text);
-    border-top-left-radius: 4px;
-  }
-  .speaker-b .bubble {
-    background: var(--mimi-bg); color: var(--text);
-    border-top-right-radius: 4px;
-  }
+  .bubble { max-width: 75%; padding: 10px 14px; border-radius: 14px; font-size: 14px; line-height: 1.6; }
+  .speaker-a .bubble { background: var(--alex-bg); color: var(--text); border-top-left-radius: 4px; }
+  .speaker-b .bubble { background: var(--mimi-bg); color: var(--text); border-top-right-radius: 4px; }
   .speaker-name { font-size: 11px; font-weight: 600; margin-bottom: 3px; }
   .speaker-a .speaker-name { color: var(--alex-color); }
   .speaker-b .speaker-name { color: var(--mimi-color); }
 
-  /* ── Audio Player ── */
+  /* ── Audio ── */
   .audio-section { display: none; }
   .audio-section.show { display: block; }
   .audio-player-wrap {
-    background: linear-gradient(135deg, #6c5ce7, #a29bfe);
-    border-radius: 14px; padding: 24px;
-    display: flex; flex-direction: column; align-items: center; gap: 16px;
-    color: white;
+    background: linear-gradient(135deg, #6c5ce7, #a29bfe); border-radius: 14px; padding: 24px;
+    display: flex; flex-direction: column; align-items: center; gap: 16px; color: white;
   }
   .audio-player-wrap h3 { font-size: 16px; }
-  .audio-player-wrap audio {
-    width: 100%; border-radius: 8px;
-  }
-  .download-btn {
-    padding: 10px 24px;
-    background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.5);
-    color: white; border-radius: 8px; text-decoration: none;
-    font-size: 14px; font-weight: 600; cursor: pointer;
-    transition: all 0.15s;
-  }
+  .audio-player-wrap audio { width: 100%; border-radius: 8px; }
+  .download-btn { padding: 10px 24px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.5); color: white; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
   .download-btn:hover { background: rgba(255,255,255,0.35); }
-  .no-audio-note {
-    text-align: center; padding: 20px;
-    color: var(--text-muted); font-size: 14px;
-  }
+  .no-audio-note { text-align: center; padding: 20px; color: var(--text-muted); font-size: 14px; }
+
+  /* ── Modal ── */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+  .modal-overlay.show { display: flex; }
+  .modal-box { background: white; border-radius: 16px; padding: 32px; width: 380px; max-width: 90vw; box-shadow: 0 12px 48px rgba(0,0,0,0.2); }
+  .modal-box h3 { font-size: 18px; margin-bottom: 20px; color: var(--text); }
+  .modal-field { margin-bottom: 14px; }
+  .modal-field label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 5px; font-weight: 600; }
+  .modal-field input { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
+  .modal-field input:focus { outline: none; border-color: var(--primary); }
+  .modal-btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.15s; margin-top: 6px; }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-ghost { background: none; color: var(--text-muted); font-size: 12px; font-weight: 500; border: none; cursor: pointer; }
+  .btn-ghost:hover { color: var(--primary); }
+  .modal-toggle { text-align: center; margin-top: 10px; font-size: 12px; color: var(--text-muted); }
+
+  /* ── Admin Panel ── */
+  .admin-section { display: none; }
+  .admin-section.show { display: block; }
+  .user-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .user-table th, .user-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  .user-table th { color: var(--text-muted); font-weight: 600; font-size: 11px; text-transform: uppercase; }
+  .upgrade-btn { padding: 5px 12px; background: var(--success); color: white; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; }
+  .upgrade-btn:hover { opacity: 0.8; }
+  .upgrade-btn:disabled { background: #ccc; cursor: not-allowed; }
 
   /* ── Footer ── */
-  footer {
-    text-align: center; padding: 20px;
-    font-size: 12px; color: var(--text-muted);
-    border-top: 1px solid var(--border);
-  }
+  footer { text-align: center; padding: 20px; font-size: 12px; color: var(--text-muted); border-top: 1px solid var(--border); }
 
-  /* ── Responsive ── */
   @media (max-width: 600px) {
-    .api-grid { grid-template-columns: 1fr; }
     main { padding: 0 14px; margin: 16px auto; }
-    header { padding: 14px 16px; }
+    header { padding: 12px 14px; }
+    .user-bar { width: 100%; margin-left: 0; margin-top: 8px; justify-content: flex-end; }
   }
 </style>
 </head>
@@ -300,6 +200,10 @@
     <h1>PDFTwocast</h1>
     <p>上传 PDF，一键生成双人播客</p>
   </div>
+  <div class="user-bar" id="userBar">
+    <button class="user-btn btn-login" id="btnLogin" onclick="showModal('login')">🔐 登录</button>
+    <span id="userInfo" style="display:none; align-items:center; gap:8px;"></span>
+  </div>
 </header>
 
 <main>
@@ -307,14 +211,19 @@
   <!-- ── 上传卡片 ── -->
   <div class="card">
     <div class="card-title">📄 上传 PDF 文件</div>
-    
+
+    <!-- 会员提示 -->
+    <div class="member-hint hint-info" id="memberHint">
+      💡 <strong>登录后</strong>可享受更多权益：普通会员生成脚本，付费会员生成完整播客
+    </div>
+
     <div class="upload-zone" id="uploadZone">
       <input type="file" id="pdfInput" accept=".pdf" />
       <div class="upload-icon">📎</div>
       <div class="upload-title">点击或拖拽 PDF 到此处</div>
       <div class="upload-hint">支持任意 PDF 文档 · 最大 20MB</div>
     </div>
-    
+
     <div class="file-selected" id="fileSelected">
       <span class="file-icon">📄</span>
       <span class="file-name" id="fileName">-</span>
@@ -322,28 +231,14 @@
       <button class="remove-btn" id="removeFile" title="移除">✕</button>
     </div>
 
-    <!-- 配置行 -->
     <div class="config-row">
       <span class="config-label">语言：</span>
       <div class="lang-toggle">
-        <input type="radio" name="lang" id="lang-zh" value="zh" checked>
-        <label for="lang-zh">🇨🇳 中文</label>
-        <input type="radio" name="lang" id="lang-en" value="en">
-        <label for="lang-en">🇺🇸 English</label>
+        <input type="radio" name="lang" id="lang-zh" value="zh" checked><label for="lang-zh">🇨🇳 中文</label>
+        <input type="radio" name="lang" id="lang-en" value="en"><label for="lang-en">🇺🇸 English</label>
       </div>
-      <button class="api-config-toggle" id="apiToggle">⚙️ API 配置</button>
-    </div>
-
-    <!-- API 配置面板 -->
-    <div class="api-panel" id="apiPanel">
-      <div class="api-grid">
-        <div class="api-field" style="grid-column: 1 / -1;">
-          <label>DeepSeek API Key（可选，留空使用服务端默认）</label>
-          <input type="password" id="deepseekKey" placeholder="sk-..." />
-        </div>
-      </div>
-      <button class="api-save" id="saveConfig">💾 保存配置</button>
-      <p class="api-note">⚠️ MiniMax TTS 已由服务端预设，无需配置。</p>
+      <button class="btn-admin" id="btnAdmin" onclick="showAdmin()">🛡️ 管理面板</button>
+      <button class="btn-admin" id="btnConfig" onclick="showConfig()" style="display:none; margin-left:8px; background:#00b894;">⚙️ 系统配置</button>
     </div>
 
     <button class="generate-btn" id="generateBtn" disabled>
@@ -351,175 +246,291 @@
     </button>
   </div>
 
-  <!-- ── 进度卡片 ── -->
+  <!-- ── 进度 ── -->
   <div class="card progress-section" id="progressSection">
     <div class="card-title">⚙️ 生成进度</div>
     <div class="progress-steps">
       <div class="step" id="step1">
-        <span class="step-icon">📄</span>
-        <div class="step-content">
-          <div class="step-title">解析 PDF</div>
-          <div class="step-desc">提取文档文本内容</div>
-        </div>
-        <span class="step-status" id="step1-status">⏳</span>
+        <span class="step-icon">📄</span><div class="step-content"><div class="step-title">解析 PDF</div><div class="step-desc">提取文档文本内容</div></div><span class="step-status">⏳</span>
       </div>
       <div class="step" id="step2">
-        <span class="step-icon">🤖</span>
-        <div class="step-content">
-          <div class="step-title">AI 生成对话脚本</div>
-          <div class="step-desc">LLM 将内容转化为双人播客对话</div>
-        </div>
-        <span class="step-status" id="step2-status">⏳</span>
+        <span class="step-icon">🤖</span><div class="step-content"><div class="step-title">AI 生成对话脚本</div><div class="step-desc">LLM 将内容转化为双人播客对话</div></div><span class="step-status">⏳</span>
       </div>
       <div class="step" id="step3">
-        <span class="step-icon">🔊</span>
-        <div class="step-content">
-          <div class="step-title">MiniMax TTS 语音合成</div>
-          <div class="step-desc">为每句对话生成语音并合并</div>
-        </div>
-        <span class="step-status" id="step3-status">⏳</span>
+        <span class="step-icon">🔊</span><div class="step-content"><div class="step-title">语音合成</div><div class="step-desc">播客大模型 / MiniMax 语音合成</div></div><span class="step-status">⏳</span>
       </div>
     </div>
   </div>
 
-  <!-- ── 脚本展示 ── -->
+  <!-- ── 脚本 ── -->
   <div class="card script-section" id="scriptSection">
     <div class="card-title">💬 播客脚本</div>
     <div class="dialogue-list" id="dialogueList"></div>
   </div>
 
-  <!-- ── 音频播放 ── -->
+  <!-- ── 音频 ── -->
   <div class="card audio-section" id="audioSection">
     <div class="card-title">🎧 播客音频</div>
     <div id="audioContent"></div>
   </div>
 
+  <!-- ── 管理面板 ── -->
+  <div class="card admin-section" id="adminSection">
+    <div class="card-title">🛡️ 用户管理</div>
+    <table class="user-table">
+      <thead><tr><th>ID</th><th>用户名</th><th>会员类型</th><th>剩余配额</th><th>累计升级</th><th>注册时间</th><th>操作</th></tr></thead>
+      <tbody id="adminTableBody"></tbody>
+    </table>
+  </div>
+
 </main>
 
-<footer>
-  PDFTwocast v1.4 · 基于 DeepSeek + MiniMax / 火山引擎 TTS 构建
-</footer>
+<footer>PDFTwocast v2.1 · 基于火山引擎播客大模型 / DeepSeek + MiniMax 构建</footer>
+
+<!-- ── 登录/注册弹窗 ── -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box" id="modalBox"></div>
+</div>
 
 <script>
-// ── 状态 ──
+// ── 全局状态 ──
 let selectedFile = null;
+let userToken = localStorage.getItem('pdftwocast_token') || '';
+let userData = null;
 
-// ── DOM 引用 ──
-const pdfInput = document.getElementById('pdfInput');
-const uploadZone = document.getElementById('uploadZone');
-const fileSelected = document.getElementById('fileSelected');
-const fileName = document.getElementById('fileName');
-const fileSize = document.getElementById('fileSize');
-const removeFile = document.getElementById('removeFile');
+// ── DOM ──
+const pdfInput    = document.getElementById('pdfInput');
+const uploadZone  = document.getElementById('uploadZone');
+const fileSelected= document.getElementById('fileSelected');
+const fileName    = document.getElementById('fileName');
+const fileSize    = document.getElementById('fileSize');
+const removeFile  = document.getElementById('removeFile');
 const generateBtn = document.getElementById('generateBtn');
-const apiToggle = document.getElementById('apiToggle');
-const apiPanel = document.getElementById('apiPanel');
-const saveConfig = document.getElementById('saveConfig');
 
-// ── 本地配置存储 ──
-function loadConfig() {
-  let cfg = JSON.parse(localStorage.getItem('pdftwocast_cfg') || '{}');
-  // 清理旧版 OpenRouter 数据，迁移到 DeepSeek
-  if (cfg.openrouterKey && !cfg.deepseekKey) {
-    cfg.deepseekKey = cfg.openrouterKey;
-    delete cfg.openrouterKey;
+// ── 认证 ──
+async function api(url, opts = {}) {
+  opts.headers = opts.headers || {};
+  if (userToken) opts.headers['Authorization'] = `Bearer ${userToken}`;
+  return fetch(url, opts);
+}
+
+async function refreshUser() {
+  if (!userToken) return;
+  const resp = await api('/api/auth/me');
+  if (!resp.ok) { logout(); return; }
+  userData = await resp.json();
+  if (!userData.logged_in) { logout(); return; }
+  renderUserBar();
+}
+
+function renderUserBar() {
+  const bar = document.getElementById('userInfo');
+  const btn = document.getElementById('btnLogin');
+  const adminBtn = document.getElementById('btnAdmin');
+  if (!userData || !userData.logged_in) {
+    bar.style.display = 'none';
+    btn.style.display = '';
+    adminBtn.classList.remove('show');
+    return;
   }
-  if (cfg.llmModel) delete cfg.llmModel;
-  localStorage.setItem('pdftwocast_cfg', JSON.stringify(cfg));
-  if (cfg.deepseekKey) document.getElementById('deepseekKey').value = cfg.deepseekKey;
+  btn.style.display = 'none';
+  bar.style.display = 'flex';
+
+  const mt = userData.membership_type;
+  let badgeHtml = '';
+  if (mt === 'paid') badgeHtml = `<span class="member-badge badge-paid">💎 付费会员</span>`;
+  else if (mt === 'admin') badgeHtml = `<span class="member-badge badge-admin">👑 管理员</span>`;
+  else badgeHtml = `<span class="member-badge badge-regular">👤 普通会员</span>`;
+
+  let quotaHtml = '';
+  if (mt === 'paid') quotaHtml = ` <span style="font-size:11px;opacity:0.8;">| 🎙️×${userData.podcast_quota}</span>`;
+
+  bar.innerHTML = `
+    <span style="font-size:13px;font-weight:600;">${escHtml(userData.username)}</span>
+    ${badgeHtml}${quotaHtml}
+    <button class="btn-logout" onclick="logout()">退出</button>
+  `;
+
+  if (mt === 'admin') { adminBtn.classList.add('show'); document.getElementById('btnConfig').style.display = ''; }
+  else { adminBtn.classList.remove('show'); document.getElementById('btnConfig').style.display = 'none'; }
+
+  updateMemberHint();
 }
-function saveConfigFn() {
-  const cfg = {
-    deepseekKey: document.getElementById('deepseekKey').value,
+
+function updateMemberHint() {
+  const el = document.getElementById('memberHint');
+  if (!userData || !userData.logged_in) {
+    el.className = 'member-hint hint-info';
+    el.innerHTML = '💡 <strong>登录后</strong>可享受更多权益：普通会员生成脚本，付费会员生成完整播客';
+  } else if (userData.membership_type === 'paid') {
+    el.className = 'member-hint hint-unlocked';
+    el.innerHTML = `✅ <strong>付费会员</strong> — 可生成完整播客音频，剩余 <strong>${userData.podcast_quota}</strong> 次`;
+  } else if (userData.membership_type === 'admin') {
+    el.className = 'member-hint hint-unlocked';
+    el.innerHTML = '👑 <strong>管理员</strong> — 无限播客生成 + 用户管理权限';
+  } else {
+    el.className = 'member-hint hint-locked';
+    el.innerHTML = '🔒 <strong>普通会员</strong> — 仅可生成对话脚本。联系管理员升级为付费会员以解锁完整播客';
+  }
+}
+
+async function login(username, password) {
+  const resp = await fetch('/api/auth/login', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({username, password}),
+  });
+  if (!resp.ok) { const e = await resp.json(); throw new Error(e.detail); }
+  const data = await resp.json();
+  userToken = data.token;
+  userData = { logged_in: true, ...data.user };
+  localStorage.setItem('pdftwocast_token', userToken);
+  renderUserBar();
+  hideModal();
+  showToast('✅ 登录成功');
+}
+
+async function register(username, password) {
+  const resp = await fetch('/api/auth/register', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({username, password}),
+  });
+  if (!resp.ok) { const e = await resp.json(); throw new Error(e.detail); }
+  const data = await resp.json();
+  userToken = data.token;
+  userData = { logged_in: true, ...data.user };
+  localStorage.setItem('pdftwocast_token', userToken);
+  renderUserBar();
+  hideModal();
+  showToast('🎉 注册成功');
+}
+
+function logout() {
+  userToken = '';
+  userData = null;
+  localStorage.removeItem('pdftwocast_token');
+  document.getElementById('userInfo').style.display = 'none';
+  document.getElementById('btnLogin').style.display = '';
+  document.getElementById('btnAdmin').classList.remove('show');
+  document.getElementById('adminSection').classList.remove('show');
+  updateMemberHint();
+  showToast('👋 已退出');
+}
+
+// ── Modal ──
+function showModal(mode) {
+  const overlay = document.getElementById('modalOverlay');
+  const box = document.getElementById('modalBox');
+  const isLogin = mode === 'login';
+  box.innerHTML = `
+    <h3>${isLogin ? '🔐 登录' : '📝 注册'}</h3>
+    <div class="modal-field">
+      <label>用户名</label>
+      <input type="text" id="modalUser" placeholder="2-32 个字符" />
+    </div>
+    <div class="modal-field">
+      <label>密码</label>
+      <input type="password" id="modalPass" placeholder="至少 4 位" />
+    </div>
+    <div class="modal-field" id="modalError" style="color:#e74c3c;font-size:12px;display:none;"></div>
+    <button class="modal-btn btn-primary" id="modalSubmit">${isLogin ? '登录' : '注册'}</button>
+    <div class="modal-toggle">
+      ${isLogin ? '还没有账号？' : '已有账号？'}
+      <button class="btn-ghost" onclick="showModal('${isLogin ? 'register' : 'login'}')">${isLogin ? '立即注册' : '去登录'}</button>
+    </div>
+  `;
+  overlay.classList.add('show');
+
+  document.getElementById('modalSubmit').onclick = async () => {
+    const u = document.getElementById('modalUser').value.trim();
+    const p = document.getElementById('modalPass').value.trim();
+    const errEl = document.getElementById('modalError');
+    try {
+      if (isLogin) await login(u, p);
+      else await register(u, p);
+    } catch (e) {
+      errEl.style.display = 'block';
+      errEl.textContent = '❌ ' + e.message;
+    }
   };
-  localStorage.setItem('pdftwocast_cfg', JSON.stringify(cfg));
-  showToast('✅ 配置已保存');
 }
-
-loadConfig();
-saveConfig.addEventListener('click', saveConfigFn);
-
-// ── API 配置面板切换 ──
-apiToggle.addEventListener('click', () => {
-  apiPanel.classList.toggle('show');
+function hideModal() {
+  document.getElementById('modalOverlay').classList.remove('show');
+}
+document.getElementById('modalOverlay').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) hideModal();
 });
 
-// ── 文件选择 ──
+// ── 管理面板 ──
+async function showAdmin() {
+  const resp = await api('/api/admin/users');
+  if (!resp.ok) { showToast('❌ 权限不足'); return; }
+  const data = await resp.json();
+  const tbody = document.getElementById('adminTableBody');
+  tbody.innerHTML = data.users.map(u => `
+    <tr>
+      <td>${u.id}</td>
+      <td><strong>${escHtml(u.username)}</strong></td>
+      <td>${u.membership_type === 'paid' ? '💎 付费' : u.membership_type === 'admin' ? '👑 管理员' : '👤 普通'}</td>
+      <td>${u.podcast_quota}</td>
+      <td>${u.total_upgrades}</td>
+      <td>${(u.created_at||'').slice(0,10)}</td>
+      <td>${u.membership_type === 'regular' ? `<button class="upgrade-btn" onclick="doUpgrade(${u.id})">⬆ 升级为付费</button>` : '-'}</td>
+    </tr>
+  `).join('');
+  document.getElementById('adminSection').classList.add('show');
+}
+
+async function doUpgrade(userId) {
+  if (!confirm(`确定将用户 #${userId} 升级为付费会员？（配额重置为 10）`)) return;
+  const resp = await api('/api/admin/upgrade', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({user_id: userId}),
+  });
+  if (!resp.ok) { showToast('❌ 升级失败'); return; }
+  showToast('✅ 升级成功（配额 10）');
+  showAdmin();
+  await refreshUser();
+}
+
+// ── 文件 ──
 function handleFile(file) {
-  if (!file || !file.name.endsWith('.pdf')) {
-    showToast('❌ 请上传 PDF 文件');
-    return;
-  }
-  if (file.size > 20 * 1024 * 1024) {
-    showToast('❌ 文件超过 20MB');
-    return;
-  }
+  if (!file || !file.name.endsWith('.pdf')) { showToast('❌ 请上传 PDF 文件'); return; }
+  if (file.size > 20 * 1024 * 1024) { showToast('❌ 文件超过 20MB'); return; }
   selectedFile = file;
   fileName.textContent = file.name;
   fileSize.textContent = formatSize(file.size);
   fileSelected.classList.add('show');
   generateBtn.disabled = false;
 }
-
-pdfInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
-
-uploadZone.addEventListener('dragover', (e) => {
-  e.preventDefault();
-  uploadZone.classList.add('drag-over');
-});
+pdfInput.addEventListener('change', e => handleFile(e.target.files[0]));
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
 uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
-uploadZone.addEventListener('drop', (e) => {
-  e.preventDefault();
-  uploadZone.classList.remove('drag-over');
-  handleFile(e.dataTransfer.files[0]);
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault(); uploadZone.classList.remove('drag-over'); handleFile(e.dataTransfer.files[0]);
 });
-
 removeFile.addEventListener('click', () => {
-  selectedFile = null;
-  pdfInput.value = '';
-  fileSelected.classList.remove('show');
-  generateBtn.disabled = true;
+  selectedFile = null; pdfInput.value = ''; fileSelected.classList.remove('show'); generateBtn.disabled = true;
 });
 
-// ── 生成主流程 ──
+// ── 生成 ──
 generateBtn.addEventListener('click', async () => {
   if (!selectedFile) return;
-
-  // 读取并注入前端配置到请求头（服务端会优先用环境变量）
-  const cfg = JSON.parse(localStorage.getItem('pdftwocast_cfg') || '{}');
-
-  // UI 重置
-  showProgress();
-  setStep(1, 'active');
-  setStep(2, 'wait');
-  setStep(3, 'wait');
   hideResults();
-
+  document.getElementById('progressSection').classList.add('show');
+  setStep(1, 'active'); setStep(2, 'wait'); setStep(3, 'wait');
   generateBtn.disabled = true;
 
-  // 构建表单
   const formData = new FormData();
   formData.append('pdf_file', selectedFile);
   formData.append('language', document.querySelector('input[name="lang"]:checked').value);
 
-  // 只有 DeepSeek Key 允许前端覆盖，MiniMax 由服务端硬编码
-  const headers = {};
-  const valid = (v) => v && v !== 'undefined' && v !== 'null';
-  if (valid(cfg.deepseekKey)) headers['X-DeepSeek-Key'] = cfg.deepseekKey;
-
   try {
     setStep(1, 'active', '正在解析 PDF...');
-    // 模拟步骤1完成（后端一起处理，这里延时展示进度感）
     await sleep(400);
     setStep(1, 'done');
-    setStep(2, 'active', 'LLM 正在生成对话脚本...');
+    setStep(2, 'active', 'AI 正在生成对话脚本...');
 
-    const resp = await fetch('/api/generate', {
-      method: 'POST',
-      headers,
-      body: formData,
-    });
-
+    const resp = await api('/api/generate', { method: 'POST', body: formData });
     if (!resp.ok) {
       const err = await resp.json().catch(() => ({ detail: resp.statusText }));
       throw new Error(err.detail || '服务器错误');
@@ -527,58 +538,49 @@ generateBtn.addEventListener('click', async () => {
 
     const data = await resp.json();
     setStep(2, 'done');
-
-    // 展示脚本
     renderScript(data.script);
 
-    // TTS 步骤
     if (data.tts_available) {
       setStep(3, 'active', '语音合成完成');
       await sleep(300);
       setStep(3, 'done');
+    } else if (data.membership && !data.membership.can_generate_podcast) {
+      setStep(3, 'skip', '跳过 — 需要付费会员才能生成音频');
     } else {
-      setStep(3, 'skip', '语音合成失败（检查 MiniMax 余额）');
+      setStep(3, 'skip', '语音合成失败（检查 API 配置）');
     }
 
-    // 展示音频
     renderAudio(data);
 
+    // 刷新配额
+    if (data.membership && data.membership.quota_consumed) {
+      await refreshUser();
+    }
   } catch (err) {
-    setStep(1, 'error');
-    setStep(2, 'error', err.message);
+    setStep(1, 'error'); setStep(2, 'error', err.message);
     showToast('❌ 生成失败：' + err.message);
-    console.error(err);
   } finally {
     generateBtn.disabled = false;
   }
 });
 
-// ── 渲染脚本 ──
+// ── 渲染 ──
 function renderScript(script) {
   const list = document.getElementById('dialogueList');
   list.innerHTML = '';
   const lang = document.querySelector('input[name="lang"]:checked').value;
-  const speakerNames = lang === 'zh' ? ['Alex', '小米'] : ['Alex', 'Sam'];
-
-  script.forEach((line, i) => {
-    const isA = line.speaker === speakerNames[0];
+  const names = lang === 'zh' ? ['Alex', '小米'] : ['Alex', 'Sam'];
+  script.forEach(line => {
+    const isA = line.speaker === names[0];
     const div = document.createElement('div');
     div.className = `dialogue-line ${isA ? 'speaker-a' : 'speaker-b'}`;
-    div.innerHTML = `
-      <div class="avatar">${isA ? '👨' : '👩'}</div>
-      <div class="bubble">
-        <div class="speaker-name">${line.speaker}</div>
-        ${escHtml(line.text)}
-      </div>
-    `;
+    div.innerHTML = `<div class="avatar">${isA ? '👨' : '👩'}</div><div class="bubble"><div class="speaker-name">${escHtml(line.speaker)}</div>${escHtml(line.text)}</div>`;
     list.appendChild(div);
   });
-
   document.getElementById('scriptSection').classList.add('show');
   list.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// ── 渲染音频 ──
 function renderAudio(data) {
   const el = document.getElementById('audioContent');
   if (data.audio_url) {
@@ -586,78 +588,132 @@ function renderAudio(data) {
       <div class="audio-player-wrap">
         <h3>🎧 播客已生成！</h3>
         <audio controls src="${data.audio_url}"></audio>
-        <a class="download-btn" href="/api/audio/${data.job_id}" download="${data.job_id}.mp3">
-          ⬇️ 下载 MP3
-        </a>
-      </div>
-    `;
+        <a class="download-btn" href="/api/audio/${data.job_id}" download="${data.job_id}.mp3">⬇️ 下载 MP3</a>
+      </div>`;
   } else {
-    el.innerHTML = `
-      <div class="no-audio-note">
-        <p>🔔 脚本已生成，但语音合成失败。</p>
-        <p style="margin-top:8px; font-size:12px;">可能原因：MiniMax 账户余额不足，请检查平台充值状态。</p>
-      </div>
-    `;
+    let reason = '语音合成失败，请检查 API 配置或服务状态。';
+    if (data.membership && !data.membership.can_generate_podcast) {
+      reason = '您的当前会员等级仅支持生成脚本。请升级为<strong>付费会员</strong>以解锁完整播客音频。';
+    }
+    el.innerHTML = `<div class="no-audio-note"><p>🔔 脚本已生成。</p><p style="margin-top:8px;font-size:12px;">${reason}</p></div>`;
   }
   document.getElementById('audioSection').classList.add('show');
 }
 
-// ── 进度控制 ──
-function showProgress() {
-  document.getElementById('progressSection').classList.add('show');
-}
+// ── 进度 ──
 function hideResults() {
   document.getElementById('scriptSection').classList.remove('show');
   document.getElementById('audioSection').classList.remove('show');
 }
-
 function setStep(num, state, desc) {
   const step = document.getElementById(`step${num}`);
-  const status = document.getElementById(`step${num}-status`);
+  if (!step) return;
+  const status = step.querySelector('.step-status');
   const descEl = step.querySelector('.step-desc');
-
   step.className = 'step';
-  if (state === 'active') {
-    step.classList.add('active');
-    status.innerHTML = '<span class="spinner">⏳</span>';
-    if (desc) descEl.textContent = desc;
-  } else if (state === 'done') {
-    step.classList.add('done');
-    status.textContent = '✅';
-  } else if (state === 'error') {
-    step.classList.add('error');
-    status.textContent = '❌';
-    if (desc) descEl.textContent = desc;
-  } else if (state === 'skip') {
-    status.textContent = '⏭️';
-    if (desc) descEl.textContent = desc;
-  } else {
-    status.textContent = '⏳';
-  }
+  if (state === 'active') { step.classList.add('active'); if (status) status.innerHTML = '<span class="spinner">⏳</span>'; if (desc && descEl) descEl.textContent = desc; }
+  else if (state === 'done') { step.classList.add('done'); if (status) status.textContent = '✅'; }
+  else if (state === 'error') { step.classList.add('error'); if (status) status.textContent = '❌'; if (desc && descEl) descEl.textContent = desc; }
+  else if (state === 'skip') { if (status) status.textContent = '⏭️'; if (desc && descEl) descEl.textContent = desc; }
+  else { if (status) status.textContent = '⏳'; }
 }
 
-// ── 工具函数 ──
-function formatSize(bytes) {
-  if (bytes < 1024) return bytes + ' B';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+// ── 工具 ──
+function formatSize(b) {
+  if (b<1024) return b+' B'; if (b<1048576) return (b/1024).toFixed(1)+' KB';
+  return (b/1048576).toFixed(1)+' MB';
 }
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-function escHtml(s) {
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-function showToast(msg) {
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function showToast(m) {
   const t = document.createElement('div');
-  t.textContent = msg;
-  Object.assign(t.style, {
-    position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)',
-    background: '#2d3436', color: 'white', padding: '10px 20px', borderRadius: '8px',
-    fontSize: '14px', zIndex: 9999, boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
-    transition: 'opacity 0.3s',
-  });
+  t.textContent = m;
+  Object.assign(t.style, { position:'fixed',bottom:'24px',left:'50%',transform:'translateX(-50%)',background:'#2d3436',color:'white',padding:'10px 20px',borderRadius:'8px',fontSize:'14px',zIndex:9999,boxShadow:'0 4px 16px rgba(0,0,0,0.2)',transition:'opacity 0.3s' });
   document.body.appendChild(t);
-  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 2500);
+  setTimeout(() => { t.style.opacity='0'; setTimeout(()=>t.remove(),300); },2500);
 }
+
+// ── 系统配置（管理员）─────────────────────────────────
+async function showConfig() {
+  const overlay = document.getElementById('configOverlay');
+  const fieldsDiv = document.getElementById('configFields');
+  const errEl = document.getElementById('configError');
+  errEl.style.display = 'none';
+
+  const resp = await api('/api/admin/config');
+  if (!resp.ok) { errEl.textContent = '❌ 获取配置失败'; errEl.style.display = 'block'; return; }
+  const data = await resp.json();
+
+  fieldsDiv.innerHTML = data.fields.map(f => `
+    <div class="modal-field" style="margin-bottom:12px;">
+      <label style="font-size:13px;font-weight:600;">${f.label}</label>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
+        <input type="password" class="config-input" data-key="${f.key}" placeholder="${f.placeholder || ''}"
+               style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;" />
+        <label style="font-size:11px;color:var(--text-muted);cursor:pointer;">
+          <input type="checkbox" onchange="this.previousElementSibling.type=this.checked?'text':'password'" /> 显示
+        </label>
+      </div>
+      ${f.is_set ? '<span style="font-size:11px;color:var(--success);">当前：已配置 ✓</span>' : '<span style="font-size:11px;color:var(--warn);">未配置</span>'}
+      <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">键名：${f.key}</div>
+    </div>
+  `).join('');
+
+  overlay.classList.add('show');
+}
+
+function hideConfig() {
+  document.getElementById('configOverlay').classList.remove('show');
+}
+
+async function saveConfig() {
+  const errEl = document.getElementById('configError');
+  errEl.style.display = 'none';
+  const inputs = document.querySelectorAll('.config-input');
+  const fields = {};
+  inputs.forEach(inp => {
+    const v = inp.value.trim();
+    if (v) fields[inp.dataset.key] = v;
+  });
+  if (Object.keys(fields).length === 0) {
+    errEl.textContent = '⚠️ 请至少填写一个配置项';
+    errEl.style.display = 'block';
+    return;
+  }
+  const resp = await api('/api/admin/config', {
+    method: 'POST',
+    body: JSON.stringify({ fields }),
+  });
+  if (!resp.ok) {
+    const e = await resp.json().catch(() => ({}));
+    errEl.textContent = '❌ 保存失败：' + (e.detail || resp.statusText);
+    errEl.style.display = 'block';
+    return;
+  }
+  const result = await resp.json();
+  showToast('✅ 配置已保存！' + (result.changed.length ? ' 已更新：' + result.changed.join(', ') : ''));
+  hideConfig();
+}
+// ── 初始化 ──
+refreshUser();
 </script>
+</div>
+
+  <!-- ── 系统配置弹窗 ── -->
+  <div class="modal-overlay" id="configOverlay" onclick="if(event.target===this)hideConfig()">
+    <div class="modal-box" style="max-width:580px;">
+      <h3>⚙️ 系统配置</h3>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">
+        修改配置后点击保存，无需重启服务即刻生效。
+      </p>
+      <div id="configFields"></div>
+      <div id="configError" style="color:#e74c3c;font-size:12px;display:none;margin-top:8px;"></div>
+      <div style="display:flex;gap:10px;margin-top:18px;">
+        <button class="modal-btn btn-primary" onclick="saveConfig()">💾 保存配置</button>
+        <button class="modal-btn btn-ghost" onclick="hideConfig()">取消</button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>

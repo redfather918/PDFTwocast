@@ -9,9 +9,13 @@ import json
 import httpx
 import asyncio
 import uuid
+import time
 from pathlib import Path
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Form, Request
+from dotenv import load_dotenv
+load_dotenv()
+
+from fastapi import FastAPI, UploadFile, File, HTTPException, Form, Request, Header
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,8 +27,12 @@ from protocols import (
     receive_message,
     EventType, MsgType,
 )
+from db import (
+    authenticate, create_user, get_user_by_id, get_all_users,
+    upgrade_user, consume_quota, init_db,
+)
 
-app = FastAPI(title="PDFTwocast", version="2.0.0")
+app = FastAPI(title="PDFTwocast", version="2.1.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -41,6 +49,149 @@ app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 # 输出目录
 output_dir = Path(__file__).parent / "outputs"
 output_dir.mkdir(exist_ok=True)
+
+# ─── 会话管理（内存 Token）──────────────────────────────────
+_sessions: dict[str, dict] = {}   # token → {user_id, username, membership_type, expires_at}
+SESSION_TTL = 86400  # 24 小时
+
+
+def _get_session(authorization: str | None) -> dict | None:
+    """从 Bearer Token 获取会话，过期自动清除"""
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+    token = authorization.removeprefix("Bearer ").strip()
+    sess = _sessions.get(token)
+    if not sess:
+        return None
+    if time.time() > sess["expires_at"]:
+        del _sessions[token]
+        return None
+    return sess
+
+
+def _require_auth(authorization: str | None) -> dict:
+    """强制鉴权：返回 session 或抛出 401"""
+    sess = _get_session(authorization)
+    if not sess:
+        raise HTTPException(status_code=401, detail="请先登录")
+    return sess
+
+
+def _require_admin(authorization: str | None) -> dict:
+    """强制 admin：返回 session 或抛出 403"""
+    sess = _require_auth(authorization)
+    if sess["membership_type"] != "admin":
+        raise HTTPException(status_code=403, detail="仅管理员可操作")
+    return sess
+
+
+# ─── 认证 API ─────────────────────────────────────────────
+
+@app.post("/api/auth/register")
+async def auth_register(data: Request):
+    body = await data.json()
+    username = (body.get("username") or "").strip()
+    password = (body.get("password") or "").strip()
+
+    if not username or not password:
+        raise HTTPException(status_code=400, detail="用户名和密码不能为空")
+    if len(username) < 2 or len(username) > 32:
+        raise HTTPException(status_code=400, detail="用户名长度 2-32 字符")
+    if len(password) < 4:
+        raise HTTPException(status_code=400, detail="密码至少 4 位")
+
+    user = create_user(username, password)
+    if not user:
+        raise HTTPException(status_code=400, detail="用户名已存在")
+
+    token = uuid.uuid4().hex
+    _sessions[token] = {
+        "user_id": user["id"],
+        "username": user["username"],
+        "membership_type": user["membership_type"],
+        "podcast_quota": user["podcast_quota"],
+        "expires_at": time.time() + SESSION_TTL,
+    }
+    return {"token": token, "user": user}
+
+
+@app.post("/api/auth/login")
+async def auth_login(data: Request):
+    body = await data.json()
+    username = (body.get("username") or "").strip()
+    password = (body.get("password") or "").strip()
+
+    user = authenticate(username, password)
+    if not user:
+        raise HTTPException(status_code=401, detail="用户名或密码错误")
+
+    token = uuid.uuid4().hex
+    _sessions[token] = {
+        "user_id": user["id"],
+        "username": user["username"],
+        "membership_type": user["membership_type"],
+        "podcast_quota": user["podcast_quota"],
+        "expires_at": time.time() + SESSION_TTL,
+    }
+    return {"token": token, "user": user}
+
+
+@app.get("/api/auth/me")
+async def auth_me(authorization: str | None = Header(None)):
+    sess = _get_session(authorization)
+    if not sess:
+        return {"logged_in": False}
+
+    # 刷新数据库状态
+    user = get_user_by_id(sess["user_id"])
+    if not user:
+        return {"logged_in": False}
+
+    # 同步 quota
+    sess["membership_type"] = user["membership_type"]
+    sess["podcast_quota"] = user["podcast_quota"]
+
+    return {
+        "logged_in": True,
+        "user_id": user["id"],
+        "username": user["username"],
+        "membership_type": user["membership_type"],
+        "podcast_quota": user["podcast_quota"],
+        "total_upgrades": user["total_upgrades"],
+    }
+
+
+@app.post("/api/auth/logout")
+async def auth_logout(authorization: str | None = Header(None)):
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.removeprefix("Bearer ").strip()
+        _sessions.pop(token, None)
+    return {"ok": True}
+
+
+# ─── 管理员 API ───────────────────────────────────────────
+
+@app.get("/api/admin/users")
+async def admin_users(authorization: str | None = Header(None)):
+    _require_admin(authorization)
+    users = get_all_users()
+    return {"users": users}
+
+
+@app.post("/api/admin/upgrade")
+async def admin_upgrade(data: Request, authorization: str | None = Header(None)):
+    admin_sess = _require_admin(authorization)
+    body = await data.json()
+    target_user_id = body.get("user_id")
+    if not target_user_id:
+        raise HTTPException(status_code=400, detail="缺少 user_id")
+
+    updated = upgrade_user(admin_sess["user_id"], target_user_id)
+    if not updated:
+        raise HTTPException(status_code=400, detail="升级失败：用户不存在或已是付费/管理员")
+
+    return {"ok": True, "user": updated}
+
 
 # ─── 默认配置（从环境变量读取）──────────────────────────────
 DEFAULT_DEEPSEEK_KEY    = os.getenv("DEEPSEEK_API_KEY", "")
@@ -382,9 +533,11 @@ async def generate_podcast(
     request: Request,
     pdf_file: UploadFile = File(...),
     language: str = Form(default="zh"),
+    authorization: str | None = Header(None),
 ):
     cfg = get_config(request)
-    tts_engine = cfg.get("tts_engine", "podcast")
+    sess = _get_session(authorization)
+    user_membership = sess["membership_type"] if sess else "guest"
 
     # 1. 读取 & 解析 PDF
     pdf_bytes = await pdf_file.read()
@@ -406,8 +559,17 @@ async def generate_podcast(
     tts_available = False
     script = []
 
-    # ── 模式 1：播客大模型 端到端生成（优先）─────────
-    if tts_engine == "podcast":
+    # ── 权限判断 ──────────────────────────────────────
+    can_generate_podcast = user_membership in ("paid", "admin")
+    quota_info = {"quota": 0, "consumed": False}
+
+    if user_membership == "paid":
+        quota_info["quota"] = sess.get("podcast_quota", 0)
+        if quota_info["quota"] <= 0:
+            can_generate_podcast = False
+
+    # ── 模式 1：播客大模型（付费用户 + 配额充足）─────────
+    if can_generate_podcast and cfg.get("tts_engine") == "podcast":
         print(f"[Podcast] 使用火山引擎播客大模型生成...")
         result = await generate_via_podcast_model(text, job_id, job_dir, cfg)
         if "script" in result:
@@ -416,8 +578,14 @@ async def generate_podcast(
             if final_path.exists():
                 audio_url = f"/api/audio/{job_id}"
                 tts_available = True
-                print(f"[Podcast] 端到端生成完成: {len(script)} 段对话, {final_path.stat().st_size} bytes")
-                # 清理空目录
+                # 扣减配额
+                if user_membership == "paid":
+                    updated = consume_quota(sess["user_id"], 1)
+                    if updated:
+                        sess["podcast_quota"] = updated["podcast_quota"]
+                        quota_info["quota"] = updated["podcast_quota"]
+                        quota_info["consumed"] = True
+                print(f"[Podcast] 端到端生成完成: {len(script)} 段对话, {final_path.stat().st_size} bytes, 剩余配额: {quota_info['quota']}")
                 try:
                     job_dir.rmdir()
                 except Exception:
@@ -427,19 +595,16 @@ async def generate_podcast(
         else:
             print(f"[Podcast] 播客大模型失败: {result.get('error', '未知错误')}")
 
-    # ── 模式 2：DeepSeek 脚本 + MiniMax TTS（降级）──
-    if not tts_available:
+    # ── 模式 2：DeepSeek 脚本 + MiniMax TTS（降级，付费）──
+    if not tts_available and can_generate_podcast:
         print("[TTS] 使用 DeepSeek + MiniMax 降级流程...")
 
         if not cfg["deepseek_key"]:
             raise HTTPException(status_code=400, detail="请配置 DeepSeek API Key")
 
-        # 生成脚本
         script = await generate_podcast_script(text, language, cfg)
-
         audio_files = []
 
-        # MiniMax TTS
         if cfg.get("minimax_key") and cfg.get("minimax_group"):
             print("[TTS] 尝试 MiniMax 合成...")
             for i, line in enumerate(script):
@@ -451,11 +616,17 @@ async def generate_podcast(
             if len(audio_files) >= len(script) * 0.5:
                 tts_available = True
                 print(f"[TTS] MiniMax 合成完成，{len(audio_files)}/{len(script)} 段成功")
+                # 扣减配额
+                if user_membership == "paid":
+                    updated = consume_quota(sess["user_id"], 1)
+                    if updated:
+                        sess["podcast_quota"] = updated["podcast_quota"]
+                        quota_info["quota"] = updated["podcast_quota"]
+                        quota_info["consumed"] = True
             else:
                 print(f"[TTS] MiniMax 合成失败（仅 {len(audio_files)}/{len(script)} 段）")
                 audio_files = []
 
-        # 合并音频
         if tts_available and audio_files:
             final_path = output_dir / f"{job_id}.mp3"
             await merge_mp3_files(audio_files, final_path)
@@ -466,7 +637,22 @@ async def generate_podcast(
                     pass
             audio_url = f"/api/audio/{job_id}"
 
-        # 清理
+        try:
+            for f in list(job_dir.iterdir()):
+                try:
+                    f.unlink()
+                except Exception:
+                    pass
+            job_dir.rmdir()
+        except Exception:
+            pass
+
+    # ── 模式 3：仅生成脚本（普通会员 / 游客）────────
+    if not script:
+        print("[ScriptOnly] 仅生成对话脚本...")
+        if not cfg["deepseek_key"]:
+            raise HTTPException(status_code=400, detail="请配置 DeepSeek API Key")
+        script = await generate_podcast_script(text, language, cfg)
         try:
             for f in list(job_dir.iterdir()):
                 try:
@@ -483,7 +669,13 @@ async def generate_podcast(
         "audio_url": audio_url,
         "text_preview": text[:300],
         "tts_available": tts_available,
-        "engine": tts_engine,
+        "engine": cfg.get("tts_engine", "podcast") if tts_available else "script_only",
+        "membership": {
+            "type": user_membership,
+            "can_generate_podcast": can_generate_podcast,
+            "quota_remaining": quota_info["quota"],
+            "quota_consumed": quota_info["consumed"],
+        },
     })
 
 
@@ -509,8 +701,132 @@ async def health():
         ),
         "podcast_configured": podcast_configured,
         "default_engine": "podcast" if podcast_configured else "minimax",
-        "version": "2.0",
+        "version": "2.1",
     }
+
+
+# ── 管理员配置管理 ─────────────────────────────────────
+_ENV_FILE = Path(__file__).parent / ".env"
+
+def _mask_value(val: str, keep: int = 6) -> str:
+    """脱敏显示：只保留前 keep 位和后 keep 位，中间用 *** 代替"""
+    if not val:
+        return ""
+    if len(val) <= keep * 2:
+        return "*" * len(val)
+    return val[:keep] + "***" + val[-keep:]
+
+
+def _read_env_file() -> dict:
+    """读取 .env 文件，返回键值对"""
+    result = {}
+    if not _ENV_FILE.exists():
+        return result
+    for line in _ENV_FILE.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "=" in line:
+            k, _, v = line.partition("=")
+            result[k.strip()] = v.strip()
+    return result
+
+
+def _write_env_file(data: dict):
+    """写回 .env 文件，保留注释行"""
+    if not _ENV_FILE.exists():
+        _ENV_FILE.write_text("", encoding="utf-8")
+    lines = _ENV_FILE.read_text(encoding="utf-8").splitlines()
+    new_lines = []
+    written_keys = set()
+    for line in lines:
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            new_lines.append(line)
+            continue
+        if "=" in stripped:
+            k, _, _ = stripped.partition("=")
+            k = k.strip()
+            if k in data:
+                new_lines.append(f"{k}={data[k]}")
+                written_keys.add(k)
+            else:
+                new_lines.append(line)
+        else:
+            new_lines.append(line)
+    # 新增文件中没有的键
+    for k, v in data.items():
+        if k not in written_keys:
+            new_lines.append(f"{k}={v}")
+    _ENV_FILE.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+
+
+@app.get("/api/admin/config")
+async def get_admin_config(authorization: str | None = Header(None)):
+    """管理员读取当前配置（脱敏）"""
+    sess = _get_session(authorization)
+    if not sess or sess["membership_type"] != "admin":
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+    env = _read_env_file()
+    # 定义所有可配置的项及其说明
+    fields = [
+        {"key": "HARDCODED_DEEPSEEK_KEY",  "label": "DeepSeek API Key",     "placeholder": "sk-..."},
+        {"key": "HARDCODED_VOLC_APP_ID",      "label": "火山引擎 App ID",       "placeholder": "数字ID"},
+        {"key": "HARDCODED_VOLC_ACCESS_KEY",  "label": "火山引擎 Access Key",   "placeholder": "Access Token"},
+        {"key": "HARDCODED_VOLC_APP_KEY",     "label": "火山引擎 App Key",      "placeholder": "App Key"},
+        {"key": "HARDCODED_MINIMAX_KEY",      "label": "MiniMax API Key",      "placeholder": "MiniMax Key"},
+        {"key": "HARDCODED_MINIMAX_GROUP",    "label": "MiniMax Group ID",     "placeholder": "MiniMax Group"},
+    ]
+    result = []
+    for f in fields:
+        val = env.get(f["key"], "")
+        result.append({
+            **f,
+            "value": _mask_value(val) if val else "",
+            "is_set": bool(val),
+        })
+    return {"fields": result}
+
+
+@app.post("/api/admin/config")
+async def update_admin_config(request: Request, authorization: str | None = Header(None)):
+    """管理员更新配置"""
+    sess = _get_session(authorization)
+    if not sess or sess["membership_type"] != "admin":
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+    body = await request.json()
+    updates: dict = body.get("fields", {})
+    if not isinstance(updates, dict):
+        raise HTTPException(status_code=400, detail="fields 必须是对象")
+    # 只允许更新白名单中的键
+    allowed = {
+        "HARDCODED_DEEPSEEK_KEY",
+        "HARDCODED_VOLC_APP_ID",
+        "HARDCODED_VOLC_ACCESS_KEY",
+        "HARDCODED_VOLC_APP_KEY",
+        "HARDCODED_MINIMAX_KEY",
+        "HARDCODED_MINIMAX_GROUP",
+    }
+    env = _read_env_file()
+    changed = []
+    for k, v in updates.items():
+        if k not in allowed:
+            continue
+        v = str(v).strip()
+        old = env.get(k, "")
+        if v and v != old:
+            env[k] = v
+            changed.append(k)
+        elif v == "" and old:
+            env[k] = ""
+            changed.append(k)
+    if changed:
+        _write_env_file(env)
+        # 同时更新当前进程的环境变量，使配置立即生效（无需重启）
+        for k in changed:
+            os.environ[k] = env.get(k, "")
+        print(f"[Config] 管理员更新了配置: {changed}")
+    return {"ok": True, "changed": changed, "restart_required": False}
 
 
 @app.get("/")

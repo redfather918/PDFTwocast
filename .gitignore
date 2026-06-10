@@ -23,9 +23,18 @@ outputs/podcast_*/
 .DS_Store
 Thumbs.db
 
+# 数据库文件（含用户数据，不提交）
+*.db
+pdftwocast.db
+
 # 测试临时文件
 test_input.pdf
 test_output.mp3
 test_podcast.mp3
 test.txt
 *.log
+
+# Windows 临时文件
+nul
+nul.*
+Thumbs.db
