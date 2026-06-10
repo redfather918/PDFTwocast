@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDFTwocast · PDF 转双人播客</title>
+<style>
+  /* ── Reset & Base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  :root {
+    --bg: #f6f4f0;
+    --card: #ffffff;
+    --primary: #6c5ce7;
+    --primary-light: #a29bfe;
+    --accent: #fd79a8;
+    --text: #2d3436;
+    --text-muted: #636e72;
+    --border: #dfe6e9;
+    --alex-bg: #e8f4fd;
+    --alex-color: #2980b9;
+    --mimi-bg: #fdf0f5;
+    --mimi-color: #c0392b;
+    --success: #00b894;
+    --radius: 16px;
+    --shadow: 0 4px 24px rgba(108,92,231,0.10);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ── */
+  header {
+    background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+    color: white;
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 2px 16px rgba(108,92,231,0.3);
+  }
+  .logo {
+    width: 48px; height: 48px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+  }
+  header h1 { font-size: 22px; font-weight: 700; }
+  header p { font-size: 13px; opacity: 0.85; margin-top: 2px; }
+
+  /* ── Main Layout ── */
+  main {
+    flex: 1;
+    max-width: 900px;
+    margin: 32px auto;
+    padding: 0 24px;
+    width: 100%;
+  }
+
+  /* ── Card ── */
+  .card {
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 28px;
+    margin-bottom: 24px;
+  }
+  .card-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  /* ── Upload Zone ── */
+  .upload-zone {
+    border: 2px dashed var(--primary-light);
+    border-radius: 12px;
+    padding: 40px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: linear-gradient(135deg, #f8f7ff, #fdf0f5);
+    position: relative;
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--primary);
+    background: #f3f1ff;
+    transform: translateY(-2px);
+  }
+  .upload-zone input[type="file"] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer;
+  }
+  .upload-icon { font-size: 48px; margin-bottom: 12px; }
+  .upload-title { font-size: 17px; font-weight: 600; color: var(--primary); }
+  .upload-hint { font-size: 13px; color: var(--text-muted); margin-top: 6px; }
+  .file-selected {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: #f0f7ff;
+    border-radius: 10px;
+    margin-top: 12px;
+    border: 1px solid #b3d4f5;
+  }
+  .file-selected.show { display: flex; }
+  .file-icon { font-size: 24px; }
+  .file-name { font-size: 14px; font-weight: 500; color: var(--primary); flex: 1; word-break: break-all; }
+  .file-size { font-size: 12px; color: var(--text-muted); }
+  .remove-btn {
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted); font-size: 18px; padding: 2px;
+  }
+  .remove-btn:hover { color: #e74c3c; }
+
+  /* ── Config Row ── */
+  .config-row {
+    display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+    margin-top: 20px;
+  }
+  .config-label {
+    font-size: 13px; color: var(--text-muted); font-weight: 500;
+  }
+  .lang-toggle {
+    display: flex; border-radius: 8px; overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .lang-toggle input { display: none; }
+  .lang-toggle label {
+    padding: 7px 16px; font-size: 13px; font-weight: 500;
+    cursor: pointer; color: var(--text-muted);
+    background: white; transition: all 0.15s;
+  }
+  .lang-toggle input:checked + label {
+    background: var(--primary); color: white;
+  }
+  
+  .api-config-toggle {
+    margin-left: auto;
+    background: none; border: 1px solid var(--border);
+    border-radius: 8px; padding: 7px 14px;
+    font-size: 12px; cursor: pointer; color: var(--text-muted);
+    transition: all 0.15s;
+  }
+  .api-config-toggle:hover { border-color: var(--primary); color: var(--primary); }
+
+  /* ── API Config Panel ── */
+  .api-panel {
+    display: none;
+    background: #f8f7ff;
+    border-radius: 10px;
+    padding: 18px;
+    margin-top: 16px;
+    border: 1px solid #e0d9ff;
+  }
+  .api-panel.show { display: block; }
+  .api-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .api-field label { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; display: block; }
+  .api-field input {
+    width: 100%; padding: 8px 12px;
+    border: 1px solid var(--border); border-radius: 8px;
+    font-size: 13px; font-family: monospace;
+    background: white;
+  }
+  .api-field input:focus { outline: none; border-color: var(--primary); }
+  .api-save {
+    margin-top: 12px; padding: 8px 20px;
+    background: var(--primary); color: white; border: none;
+    border-radius: 8px; font-size: 13px; cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .api-save:hover { opacity: 0.85; }
+  .api-note { font-size: 11px; color: var(--text-muted); margin-top: 8px; }
+
+  /* ── Generate Button ── */
+  .generate-btn {
+    width: 100%; padding: 16px;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: white; border: none; border-radius: 12px;
+    font-size: 16px; font-weight: 700; cursor: pointer;
+    transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    margin-top: 20px; letter-spacing: 0.03em;
+  }
+  .generate-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(108,92,231,0.3); }
+  .generate-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+  /* ── Progress ── */
+  .progress-section { display: none; }
+  .progress-section.show { display: block; }
+  .progress-steps { display: flex; flex-direction: column; gap: 12px; }
+  .step {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 18px; border-radius: 10px;
+    border: 1px solid var(--border); background: white;
+    transition: all 0.3s;
+  }
+  .step.active { border-color: var(--primary-light); background: #f8f7ff; }
+  .step.done { border-color: #b2f0e8; background: #f0fdf9; }
+  .step.error { border-color: #ffd0d0; background: #fff5f5; }
+  .step-icon { font-size: 22px; width: 32px; text-align: center; flex-shrink: 0; }
+  .step-content { flex: 1; }
+  .step-title { font-size: 14px; font-weight: 600; }
+  .step-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .step-status {
+    font-size: 20px;
+    transition: all 0.3s;
+  }
+  .spinner { animation: spin 0.8s linear infinite; display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Script Display ── */
+  .script-section { display: none; }
+  .script-section.show { display: block; }
+  .dialogue-list { display: flex; flex-direction: column; gap: 10px; }
+  .dialogue-line {
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  .dialogue-line.speaker-b { flex-direction: row-reverse; }
+  .avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 700; flex-shrink: 0;
+  }
+  .speaker-a .avatar { background: var(--alex-bg); color: var(--alex-color); }
+  .speaker-b .avatar { background: var(--mimi-bg); color: var(--mimi-color); }
+  .bubble {
+    max-width: 75%; padding: 10px 14px;
+    border-radius: 14px; font-size: 14px; line-height: 1.6;
+  }
+  .speaker-a .bubble {
+    background: var(--alex-bg); color: var(--text);
+    border-top-left-radius: 4px;
+  }
+  .speaker-b .bubble {
+    background: var(--mimi-bg); color: var(--text);
+    border-top-right-radius: 4px;
+  }
+  .speaker-name { font-size: 11px; font-weight: 600; margin-bottom: 3px; }
+  .speaker-a .speaker-name { color: var(--alex-color); }
+  .speaker-b .speaker-name { color: var(--mimi-color); }
+
+  /* ── Audio Player ── */
+  .audio-section { display: none; }
+  .audio-section.show { display: block; }
+  .audio-player-wrap {
+    background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+    border-radius: 14px; padding: 24px;
+    display: flex; flex-direction: column; align-items: center; gap: 16px;
+    color: white;
+  }
+  .audio-player-wrap h3 { font-size: 16px; }
+  .audio-player-wrap audio {
+    width: 100%; border-radius: 8px;
+  }
+  .download-btn {
+    padding: 10px 24px;
+    background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.5);
+    color: white; border-radius: 8px; text-decoration: none;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .download-btn:hover { background: rgba(255,255,255,0.35); }
+  .no-audio-note {
+    text-align: center; padding: 20px;
+    color: var(--text-muted); font-size: 14px;
+  }
+
+  /* ── Footer ── */
+  footer {
+    text-align: center; padding: 20px;
+    font-size: 12px; color: var(--text-muted);
+    border-top: 1px solid var(--border);
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 600px) {
+    .api-grid { grid-template-columns: 1fr; }
+    main { padding: 0 14px; margin: 16px auto; }
+    header { padding: 14px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🎙️</div>
+  <div>
+    <h1>PDFTwocast</h1>
+    <p>上传 PDF，一键生成双人播客</p>
+  </div>
+</header>
+
+<main>
+
+  <!-- ── 上传卡片 ── -->
+  <div class="card">
+    <div class="card-title">📄 上传 PDF 文件</div>
+    
+    <div class="upload-zone" id="uploadZone">
+      <input type="file" id="pdfInput" accept=".pdf" />
+      <div class="upload-icon">📎</div>
+      <div class="upload-title">点击或拖拽 PDF 到此处</div>
+      <div class="upload-hint">支持任意 PDF 文档 · 最大 20MB</div>
+    </div>
+    
+    <div class="file-selected" id="fileSelected">
+      <span class="file-icon">📄</span>
+      <span class="file-name" id="fileName">-</span>
+      <span class="file-size" id="fileSize">-</span>
+      <button class="remove-btn" id="removeFile" title="移除">✕</button>
+    </div>
+
+    <!-- 配置行 -->
+    <div class="config-row">
+      <span class="config-label">语言：</span>
+      <div class="lang-toggle">
+        <input type="radio" name="lang" id="lang-zh" value="zh" checked>
+        <label for="lang-zh">🇨🇳 中文</label>
+        <input type="radio" name="lang" id="lang-en" value="en">
+        <label for="lang-en">🇺🇸 English</label>
+      </div>
+      <button class="api-config-toggle" id="apiToggle">⚙️ API 配置</button>
+    </div>
+
+    <!-- API 配置面板 -->
+    <div class="api-panel" id="apiPanel">
+      <div class="api-grid">
+        <div class="api-field" style="grid-column: 1 / -1;">
+          <label>DeepSeek API Key（可选，留空使用服务端默认）</label>
+          <input type="password" id="deepseekKey" placeholder="sk-..." />
+        </div>
+      </div>
+      <button class="api-save" id="saveConfig">💾 保存配置</button>
+      <p class="api-note">⚠️ MiniMax TTS 已由服务端预设，无需配置。</p>
+    </div>
+
+    <button class="generate-btn" id="generateBtn" disabled>
+      <span>🎙️</span> 生成播客
+    </button>
+  </div>
+
+  <!-- ── 进度卡片 ── -->
+  <div class="card progress-section" id="progressSection">
+    <div class="card-title">⚙️ 生成进度</div>
+    <div class="progress-steps">
+      <div class="step" id="step1">
+        <span class="step-icon">📄</span>
+        <div class="step-content">
+          <div class="step-title">解析 PDF</div>
+          <div class="step-desc">提取文档文本内容</div>
+        </div>
+        <span class="step-status" id="step1-status">⏳</span>
+      </div>
+      <div class="step" id="step2">
+        <span class="step-icon">🤖</span>
+        <div class="step-content">
+          <div class="step-title">AI 生成对话脚本</div>
+          <div class="step-desc">LLM 将内容转化为双人播客对话</div>
+        </div>
+        <span class="step-status" id="step2-status">⏳</span>
+      </div>
+      <div class="step" id="step3">
+        <span class="step-icon">🔊</span>
+        <div class="step-content">
+          <div class="step-title">MiniMax TTS 语音合成</div>
+          <div class="step-desc">为每句对话生成语音并合并</div>
+        </div>
+        <span class="step-status" id="step3-status">⏳</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 脚本展示 ── -->
+  <div class="card script-section" id="scriptSection">
+    <div class="card-title">💬 播客脚本</div>
+    <div class="dialogue-list" id="dialogueList"></div>
+  </div>
+
+  <!-- ── 音频播放 ── -->
+  <div class="card audio-section" id="audioSection">
+    <div class="card-title">🎧 播客音频</div>
+    <div id="audioContent"></div>
+  </div>
+
+</main>
+
+<footer>
+  PDFTwocast v1.4 · 基于 DeepSeek + MiniMax / 火山引擎 TTS 构建
+</footer>
+
+<script>
+// ── 状态 ──
+let selectedFile = null;
+
+// ── DOM 引用 ──
+const pdfInput = document.getElementById('pdfInput');
+const uploadZone = document.getElementById('uploadZone');
+const fileSelected = document.getElementById('fileSelected');
+const fileName = document.getElementById('fileName');
+const fileSize = document.getElementById('fileSize');
+const removeFile = document.getElementById('removeFile');
+const generateBtn = document.getElementById('generateBtn');
+const apiToggle = document.getElementById('apiToggle');
+const apiPanel = document.getElementById('apiPanel');
+const saveConfig = document.getElementById('saveConfig');
+
+// ── 本地配置存储 ──
+function loadConfig() {
+  let cfg = JSON.parse(localStorage.getItem('pdftwocast_cfg') || '{}');
+  // 清理旧版 OpenRouter 数据，迁移到 DeepSeek
+  if (cfg.openrouterKey && !cfg.deepseekKey) {
+    cfg.deepseekKey = cfg.openrouterKey;
+    delete cfg.openrouterKey;
+  }
+  if (cfg.llmModel) delete cfg.llmModel;
+  localStorage.setItem('pdftwocast_cfg', JSON.stringify(cfg));
+  if (cfg.deepseekKey) document.getElementById('deepseekKey').value = cfg.deepseekKey;
+}
+function saveConfigFn() {
+  const cfg = {
+    deepseekKey: document.getElementById('deepseekKey').value,
+  };
+  localStorage.setItem('pdftwocast_cfg', JSON.stringify(cfg));
+  showToast('✅ 配置已保存');
+}
+
+loadConfig();
+saveConfig.addEventListener('click', saveConfigFn);
+
+// ── API 配置面板切换 ──
+apiToggle.addEventListener('click', () => {
+  apiPanel.classList.toggle('show');
+});
+
+// ── 文件选择 ──
+function handleFile(file) {
+  if (!file || !file.name.endsWith('.pdf')) {
+    showToast('❌ 请上传 PDF 文件');
+    return;
+  }
+  if (file.size > 20 * 1024 * 1024) {
+    showToast('❌ 文件超过 20MB');
+    return;
+  }
+  selectedFile = file;
+  fileName.textContent = file.name;
+  fileSize.textContent = formatSize(file.size);
+  fileSelected.classList.add('show');
+  generateBtn.disabled = false;
+}
+
+pdfInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+
+uploadZone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  uploadZone.classList.add('drag-over');
+});
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  uploadZone.classList.remove('drag-over');
+  handleFile(e.dataTransfer.files[0]);
+});
+
+removeFile.addEventListener('click', () => {
+  selectedFile = null;
+  pdfInput.value = '';
+  fileSelected.classList.remove('show');
+  generateBtn.disabled = true;
+});
+
+// ── 生成主流程 ──
+generateBtn.addEventListener('click', async () => {
+  if (!selectedFile) return;
+
+  // 读取并注入前端配置到请求头（服务端会优先用环境变量）
+  const cfg = JSON.parse(localStorage.getItem('pdftwocast_cfg') || '{}');
+
+  // UI 重置
+  showProgress();
+  setStep(1, 'active');
+  setStep(2, 'wait');
+  setStep(3, 'wait');
+  hideResults();
+
+  generateBtn.disabled = true;
+
+  // 构建表单
+  const formData = new FormData();
+  formData.append('pdf_file', selectedFile);
+  formData.append('language', document.querySelector('input[name="lang"]:checked').value);
+
+  // 只有 DeepSeek Key 允许前端覆盖，MiniMax 由服务端硬编码
+  const headers = {};
+  const valid = (v) => v && v !== 'undefined' && v !== 'null';
+  if (valid(cfg.deepseekKey)) headers['X-DeepSeek-Key'] = cfg.deepseekKey;
+
+  try {
+    setStep(1, 'active', '正在解析 PDF...');
+    // 模拟步骤1完成（后端一起处理，这里延时展示进度感）
+    await sleep(400);
+    setStep(1, 'done');
+    setStep(2, 'active', 'LLM 正在生成对话脚本...');
+
+    const resp = await fetch('/api/generate', {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({ detail: resp.statusText }));
+      throw new Error(err.detail || '服务器错误');
+    }
+
+    const data = await resp.json();
+    setStep(2, 'done');
+
+    // 展示脚本
+    renderScript(data.script);
+
+    // TTS 步骤
+    if (data.tts_available) {
+      setStep(3, 'active', '语音合成完成');
+      await sleep(300);
+      setStep(3, 'done');
+    } else {
+      setStep(3, 'skip', '语音合成失败（检查 MiniMax 余额）');
+    }
+
+    // 展示音频
+    renderAudio(data);
+
+  } catch (err) {
+    setStep(1, 'error');
+    setStep(2, 'error', err.message);
+    showToast('❌ 生成失败：' + err.message);
+    console.error(err);
+  } finally {
+    generateBtn.disabled = false;
+  }
+});
+
+// ── 渲染脚本 ──
+function renderScript(script) {
+  const list = document.getElementById('dialogueList');
+  list.innerHTML = '';
+  const lang = document.querySelector('input[name="lang"]:checked').value;
+  const speakerNames = lang === 'zh' ? ['Alex', '小米'] : ['Alex', 'Sam'];
+
+  script.forEach((line, i) => {
+    const isA = line.speaker === speakerNames[0];
+    const div = document.createElement('div');
+    div.className = `dialogue-line ${isA ? 'speaker-a' : 'speaker-b'}`;
+    div.innerHTML = `
+      <div class="avatar">${isA ? '👨' : '👩'}</div>
+      <div class="bubble">
+        <div class="speaker-name">${line.speaker}</div>
+        ${escHtml(line.text)}
+      </div>
+    `;
+    list.appendChild(div);
+  });
+
+  document.getElementById('scriptSection').classList.add('show');
+  list.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── 渲染音频 ──
+function renderAudio(data) {
+  const el = document.getElementById('audioContent');
+  if (data.audio_url) {
+    el.innerHTML = `
+      <div class="audio-player-wrap">
+        <h3>🎧 播客已生成！</h3>
+        <audio controls src="${data.audio_url}"></audio>
+        <a class="download-btn" href="/api/audio/${data.job_id}" download="${data.job_id}.mp3">
+          ⬇️ 下载 MP3
+        </a>
+      </div>
+    `;
+  } else {
+    el.innerHTML = `
+      <div class="no-audio-note">
+        <p>🔔 脚本已生成，但语音合成失败。</p>
+        <p style="margin-top:8px; font-size:12px;">可能原因：MiniMax 账户余额不足，请检查平台充值状态。</p>
+      </div>
+    `;
+  }
+  document.getElementById('audioSection').classList.add('show');
+}
+
+// ── 进度控制 ──
+function showProgress() {
+  document.getElementById('progressSection').classList.add('show');
+}
+function hideResults() {
+  document.getElementById('scriptSection').classList.remove('show');
+  document.getElementById('audioSection').classList.remove('show');
+}
+
+function setStep(num, state, desc) {
+  const step = document.getElementById(`step${num}`);
+  const status = document.getElementById(`step${num}-status`);
+  const descEl = step.querySelector('.step-desc');
+
+  step.className = 'step';
+  if (state === 'active') {
+    step.classList.add('active');
+    status.innerHTML = '<span class="spinner">⏳</span>';
+    if (desc) descEl.textContent = desc;
+  } else if (state === 'done') {
+    step.classList.add('done');
+    status.textContent = '✅';
+  } else if (state === 'error') {
+    step.classList.add('error');
+    status.textContent = '❌';
+    if (desc) descEl.textContent = desc;
+  } else if (state === 'skip') {
+    status.textContent = '⏭️';
+    if (desc) descEl.textContent = desc;
+  } else {
+    status.textContent = '⏳';
+  }
+}
+
+// ── 工具函数 ──
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  Object.assign(t.style, {
+    position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)',
+    background: '#2d3436', color: 'white', padding: '10px 20px', borderRadius: '8px',
+    fontSize: '14px', zIndex: 9999, boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+    transition: 'opacity 0.3s',
+  });
+  document.body.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 2500);
+}
+</script>
+</body>
+</html>

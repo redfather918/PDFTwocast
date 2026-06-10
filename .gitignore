@@ -1,0 +1,31 @@
+# 环境变量（含密钥）
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+.venv/
+venv/
+
+# 输出文件（音频太大不提交）
+outputs/*.mp3
+outputs/podcast_*/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 测试临时文件
+test_input.pdf
+test_output.mp3
+test_podcast.mp3
+test.txt
+*.log
