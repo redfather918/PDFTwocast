@@ -639,10 +639,26 @@ async function showConfig() {
   const fieldsDiv = document.getElementById('configFields');
   const errEl = document.getElementById('configError');
   errEl.style.display = 'none';
+  fieldsDiv.innerHTML = '<p style="color:var(--text-muted);font-size:13px;">加载中...</p>';
+  overlay.classList.add('show');   // 先打开弹窗，再请求数据
 
-  const resp = await api('/api/admin/config');
-  if (!resp.ok) { errEl.textContent = '❌ 获取配置失败'; errEl.style.display = 'block'; return; }
-  const data = await resp.json();
+  let data;
+  try {
+    const resp = await api('/api/admin/config');
+    if (!resp.ok) {
+      const e = await resp.json().catch(() => ({}));
+      fieldsDiv.innerHTML = '';
+      errEl.textContent = '❌ 获取配置失败：' + (e.detail || resp.statusText);
+      errEl.style.display = 'block';
+      return;
+    }
+    data = await resp.json();
+  } catch (e) {
+    fieldsDiv.innerHTML = '';
+    errEl.textContent = '❌ 网络错误：' + e.message;
+    errEl.style.display = 'block';
+    return;
+  }
 
   fieldsDiv.innerHTML = data.fields.map(f => `
     <div class="modal-field" style="margin-bottom:12px;">
@@ -697,23 +713,22 @@ async function saveConfig() {
 // ── 初始化 ──
 refreshUser();
 </script>
-</div>
 
-  <!-- ── 系统配置弹窗 ── -->
-  <div class="modal-overlay" id="configOverlay" onclick="if(event.target===this)hideConfig()">
-    <div class="modal-box" style="max-width:580px;">
-      <h3>⚙️ 系统配置</h3>
-      <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">
-        修改配置后点击保存，无需重启服务即刻生效。
-      </p>
-      <div id="configFields"></div>
-      <div id="configError" style="color:#e74c3c;font-size:12px;display:none;margin-top:8px;"></div>
-      <div style="display:flex;gap:10px;margin-top:18px;">
-        <button class="modal-btn btn-primary" onclick="saveConfig()">💾 保存配置</button>
-        <button class="modal-btn btn-ghost" onclick="hideConfig()">取消</button>
-      </div>
+<!-- ── 系统配置弹窗 ── -->
+<div class="modal-overlay" id="configOverlay" onclick="if(event.target===this)hideConfig()">
+  <div class="modal-box" style="max-width:580px;">
+    <h3>⚙️ 系统配置</h3>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">
+      修改配置后点击保存，无需重启服务即刻生效。
+    </p>
+    <div id="configFields"></div>
+    <div id="configError" style="color:#e74c3c;font-size:12px;display:none;margin-top:8px;"></div>
+    <div style="display:flex;gap:10px;margin-top:18px;">
+      <button class="modal-btn btn-primary" onclick="saveConfig()">💾 保存配置</button>
+      <button class="modal-btn btn-ghost" onclick="hideConfig()">取消</button>
     </div>
   </div>
+</div>
 
 </body>
 </html>
